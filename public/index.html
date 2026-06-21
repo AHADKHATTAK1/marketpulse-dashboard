@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketPulse — US/UK Product Scraper & SEO Optimizer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">Market<span>Pulse</span></div>
+    <nav class="tabs">
+      <button class="tab-btn active" onclick="switchTab('explorer')">🌐 Market Explorer</button>
+      <button class="tab-btn" onclick="switchTab('imports')">
+        📦 My Import List <span class="badge-count" id="saved-count-badge">0</span>
+      </button>
+    </nav>
+    <div class="header-badges">
+      <span class="badge badge-amazon">Amazon</span>
+      <span class="badge badge-ebay">eBay</span>
+      <span class="badge badge-walmart">Walmart</span>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="container">
+    
+    <!-- EXPLORER TAB PANEL -->
+    <section id="panel-explorer" class="tab-panel active">
+      
+      <!-- HERO -->
+      <div class="hero">
+        <h1>US &amp; UK Market <br><em>Demanding Products</em></h1>
+        <p>Extract trending products, automatically generate high-conversion SEO metadata, and import them directly to your store.</p>
+      </div>
+
+      <!-- CONTROLS -->
+      <div class="controls-card">
+        <div class="controls-row">
+          <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="Search: wireless earbuds, air fryer, smart watch..." />
+          </div>
+          
+          <div class="control-group">
+            <label for="market-select">Market</label>
+            <select id="market-select">
+              <option value="US">🇺🇸 United States</option>
+              <option value="GB">🇬🇧 United Kingdom</option>
+              <option value="both">🌍 US &amp; UK Markets</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="category-select">Category</label>
+            <select id="category-select">
+              <option value="bestsellers">🔥 Bestsellers</option>
+              <option value="electronics">💻 Electronics</option>
+              <option value="home">🏠 Home &amp; Kitchen</option>
+              <option value="fashion">👗 Fashion &amp; Shoes</option>
+              <option value="beauty">💄 Beauty &amp; Care</option>
+              <option value="sports">⚽ Sports &amp; Fitness</option>
+              <option value="toys">🧸 Toys &amp; Games</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="sort-select">Sort By</label>
+            <select id="sort-select" onchange="applyFilters()">
+              <option value="demand">📈 High Demand</option>
+              <option value="price_low">💰 Price: Low to High</option>
+              <option value="price_high">💎 Price: High to Low</option>
+              <option value="rating">⭐ Top Rated</option>
+              <option value="reviews">💬 Most Reviewed</option>
+            </select>
+          </div>
+
+          <button class="btn-fetch" id="fetch-btn" onclick="fetchProducts()">
+            <span class="btn-icon">⚡</span> Fetch Products
+          </button>
+        </div>
+      </div>
+
+      <!-- LIVE API / DEMO MODE STATUS BANNER -->
+      <div class="info-banner" id="mode-banner" style="display:none">
+        <span class="info-icon">💡</span>
+        <p id="mode-text"></p>
+      </div>
+
+      <!-- ERROR BANNER -->
+      <div class="error-banner" id="error-banner" style="display:none">
+        <span class="error-icon">⚠️</span>
+        <p id="error-text"></p>
+      </div>
+
+      <!-- STATS BAR -->
+      <div class="stats-bar" id="stats-bar" style="display:none">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-total">0</div>
+          <div class="stat-label">Products Scraped</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-avg-price">$0</div>
+          <div class="stat-label">Average Price</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-high-demand">0</div>
+          <div class="stat-label">Hot Demand</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-sources">0</div>
+          <div class="stat-label">Active Sources</div>
+        </div>
+      </div>
+
+      <!-- SCANNING / LOADING STATE -->
+      <div id="loading" style="display:none">
+        <div class="loading-card">
+          <div class="spinner"></div>
+          <h2>Scanning E-Commerce Databases...</h2>
+          <p>Extracting trending products, analyzing sales ranks, and compiling SEO data.</p>
+        </div>
+      </div>
+
+      <!-- SCRAPED PRODUCTS GRID -->
+      <div id="products-section">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">🛒</div>
+          <h3>Start Finding Demanding Products</h3>
+          <p>Type keywords or select a category, then click "Fetch Products" to extract items from Amazon, eBay, and Walmart.</p>
+        </div>
+
+        <div style="display:none" id="results-header" class="section-header">
+          <h2 class="section-title">🔥 Scraped Results</h2>
+          <span class="result-count" id="result-count">0 products found</span>
+        </div>
+
+        <div class="products-grid" id="products-grid"></div>
+      </div>
+
+    </section>
+
+    <!-- IMPORTS TAB PANEL -->
+    <section id="panel-imports" class="tab-panel">
+      
+      <!-- HERO -->
+      <div class="hero">
+        <h1>My Import List &amp; <em>Store Exporter</em></h1>
+        <p>Review your customized products, verify SEO metadata, and download bulk Shopify or WooCommerce CSV imports.</p>
+      </div>
+
+      <!-- EXPORT ACTIONS CARD -->
+      <div class="export-card" id="export-card">
+        <div class="export-info">
+          <h3>📦 Export Ready: <span id="export-count">0</span> Products</h3>
+          <p>Download your SEO-optimized products in formats configured directly for your online store.</p>
+        </div>
+        <div class="export-buttons">
+          <button class="btn-export shopify" onclick="triggerExport('shopify')">
+            <span class="export-icon">🛒</span> Shopify CSV
+          </button>
+          <button class="btn-export woocommerce" onclick="triggerExport('woocommerce')">
+            <span class="export-icon">🛍️</span> WooCommerce CSV
+          </button>
+          <button class="btn-export standard" onclick="triggerExport('standard')">
+            <span class="export-icon">📊</span> Standard CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- SAVED PRODUCTS GRID -->
+      <div id="imports-section">
+        <div class="empty-state" id="imports-empty-state">
+          <div class="empty-icon">📂</div>
+          <h3>Your Import List is Empty</h3>
+          <p>Go to the <strong>Market Explorer</strong>, search for products, click on them to edit their SEO details, and click "Save to Import List".</p>
+        </div>
+
+        <div class="products-grid" id="imports-grid"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL: DETAILED VIEW & SEO / PRICE MARKUP EDITOR -->
+  <div class="modal-overlay" id="editor-modal" onclick="handleModalOverlayClick(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <span class="badge" id="modal-source-badge">AMAZON</span>
+          <span class="market-indicator" id="modal-market-badge">🇺🇸 US Market</span>
+        </div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      
+      <div class="modal-body">
+        
+        <!-- LEFT PANEL: ORIGINAL DATA & PRICING -->
+        <div class="modal-col-left">
+          <div class="product-preview-card">
+            <img id="modal-image" src="" alt="Product Preview" onerror="this.src='https://placehold.co/400x400?text=No+Product+Image'">
+            <h3 id="modal-original-title">Original Title</h3>
+            
+            <div class="original-meta">
+              <div class="meta-item">
+                <span class="meta-label">Original Price</span>
+                <span class="meta-val" id="modal-original-price">$0.00</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Reviews Count</span>
+                <span class="meta-val" id="modal-reviews">0</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Global Rating</span>
+                <span class="meta-val" id="modal-rating">⭐ 4.5</span>
+              </div>
+            </div>
+            
+            <a href="#" id="modal-original-link" target="_blank" class="btn-source-link">
+              🔗 View Original Product Listing
+            </a>
+          </div>
+
+          <!-- PRICING CALCULATOR CARD -->
+          <div class="calculator-card">
+            <h4>💰 Pricing &amp; Markup Calculator</h4>
+            <p class="calc-subtitle">Set your selling price and calculate profit margin instantly.</p>
+            
+            <div class="calc-row">
+              <div class="input-group">
+                <label>Cost Price (<span class="currency-symbol">$</span>)</label>
+                <input type="number" id="calc-cost" step="0.01" readonly>
+              </div>
+              <div class="input-group">
+                <label>Target Selling Price (<span class="currency-symbol">$</span>)</label>
+                <input type="number" id="calc-selling" step="0.01" oninput="calculateMargin()">
+              </div>
+            </div>
+
+            <div class="calc-results">
+              <div class="result-box">
+                <span class="res-label">Estimated Profit</span>
+                <span class="res-val" id="calc-profit">$0.00</span>
+              </div>
+              <div class="result-box">
+                <span class="res-label">Profit Margin</span>
+                <span class="res-val" id="calc-margin">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- RIGHT PANEL: INTERACTIVE SEO EDITOR FORM -->
+        <div class="modal-col-right">
+          <div class="editor-header">
+            <h4>✏️ SEO &amp; Copywriting Optimizer</h4>
+            <p>Customize product details to match your store branding and rank higher on Google.</p>
+          </div>
+
+          <form id="seo-form" onsubmit="saveProductSEO(event)">
+            <!-- Custom Title -->
+            <div class="form-group">
+              <div class="label-row">
+                <label for="seo-input-title">Custom Product Title</label>
+                <span class="char-counter"><span id="title-char-count">0</span>/70 chars</span>
+              </div>
+              <input type="text" id="seo-input-title" required oninput="updateCharCount('seo-input-title', 'title-char-count', 70)">
+              <span class="field-hint">Optimized for Google search and collection pages.</span>
+            </div>
+
+            <!-- Custom H1 Heading -->
+            <div class="form-group">
+              <div class="label-row">
+                <label for="seo-input-h1">H1 Heading (Product Landing Page)</label>
+              </div>
+              <input type="text" id="seo-input-h1" required>
+            </div>
+
+            <!-- Meta Description -->
+            <div class="form-group">
+              <div class="label-row">
+                <label for="seo-input-desc">SEO Meta Description</label>
+                <span class="char-counter"><span id="desc-char-count">0</span>/160 chars</span>
+              </div>
+              <textarea id="seo-input-desc" rows="3" required oninput="updateCharCount('seo-input-desc', 'desc-char-count', 160)"></textarea>
+              <span class="field-hint">Used by Google to display snippets in search results.</span>
+            </div>
+
+            <!-- Keywords -->
+            <div class="form-group">
+              <label for="seo-input-keywords">SEO Tags &amp; Keywords (Comma separated)</label>
+              <input type="text" id="seo-input-keywords" placeholder="earbuds, wireless bluetooth earbuds, cheap audio">
+              <span class="field-hint">Tags mapped directly to Shopify/WooCommerce tag lists.</span>
+            </div>
+
+            <!-- JSON Schema Markup -->
+            <div class="form-group">
+              <label>JSON-LD Schema Markup (Auto Generated)</label>
+              <pre id="seo-schema-preview" class="schema-preview"></pre>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-submit-seo">💾 Save to Import List</button>
+              <button type="button" id="btn-delete-saved" class="btn-delete-seo" onclick="deleteSavedProduct()" style="display:none">
+                🗑️ Delete Item
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast" id="toast">SEO Data Saved!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
