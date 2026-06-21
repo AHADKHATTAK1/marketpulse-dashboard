@@ -645,17 +645,33 @@ app.get('/api/export', (req, res) => {
 const CREDENTIALS_FILE = path.join(DATA_DIR, 'credentials.json');
 
 function getDriveClient() {
-  if (!fs.existsSync(CREDENTIALS_FILE)) {
-    throw new Error('Google credentials.json file not found in data directory.');
-  }
   const folderId = process.env.GD_FOLDER_ID;
   if (!folderId) {
     throw new Error('GD_FOLDER_ID is not configured in your .env file.');
   }
-  const auth = new google.auth.GoogleAuth({
-    keyFile: CREDENTIALS_FILE,
-    scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'],
-  });
+
+  let auth;
+  const envCreds = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+
+  if (envCreds) {
+    try {
+      const credentials = JSON.parse(envCreds);
+      auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'],
+      });
+    } catch (e) {
+      throw new Error('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON: ' + e.message);
+    }
+  } else if (fs.existsSync(CREDENTIALS_FILE)) {
+    auth = new google.auth.GoogleAuth({
+      keyFile: CREDENTIALS_FILE,
+      scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'],
+    });
+  } else {
+    throw new Error('Google Drive configuration missing: credentials.json not found, and GOOGLE_SERVICE_ACCOUNT_JSON is not configured.');
+  }
+
   return google.drive({ version: 'v3', auth });
 }
 
@@ -704,22 +720,30 @@ async function uploadDatabaseToDrive() {
 // Route: Get Google Drive Backup configuration status
 app.get('/api/backup/status', (req, res) => {
   const credsExist = fs.existsSync(CREDENTIALS_FILE);
+  const envCredsExist = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const folderId = process.env.GD_FOLDER_ID || '';
   
   let clientEmail = '';
-  if (credsExist) {
+  if (envCredsExist) {
+    try {
+      const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+      clientEmail = creds.client_email || '';
+    } catch (e) {
+      console.warn('[Drive] Env credentials parse error:', e.message);
+    }
+  } else if (credsExist) {
     try {
       const creds = JSON.parse(fs.readFileSync(CREDENTIALS_FILE, 'utf8'));
       clientEmail = creds.client_email || '';
     } catch (e) {
-      console.warn('[Drive] Credentials parse error:', e.message);
+      console.warn('[Drive] File credentials parse error:', e.message);
     }
   }
 
   res.json({
     success: true,
-    configured: credsExist && folderId.trim().length > 0,
-    hasCredentials: credsExist,
+    configured: (credsExist || envCredsExist) && folderId.trim().length > 0,
+    hasCredentials: credsExist || envCredsExist,
     hasFolderId: folderId.trim().length > 0,
     clientEmail: clientEmail,
     folderId: folderId
