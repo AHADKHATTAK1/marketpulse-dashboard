@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketPulse — US/UK Trending Products</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3d;
+    --accent: #7c5cfc;
+    --accent2: #00e5a0;
+    --accent3: #ff6b35;
+    --text: #e8e8f0;
+    --muted: #6b6b85;
+    --amazon: #ff9900;
+    --ebay: #0064d2;
+    --walmart: #0071ce;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+
+  .header-badges {
+    display: flex;
+    gap: 8px;
+  }
+  .badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .badge-amazon { background: rgba(255,153,0,0.15); color: var(--amazon); border: 1px solid rgba(255,153,0,0.3); }
+  .badge-ebay   { background: rgba(0,100,210,0.15); color: #4da6ff; border: 1px solid rgba(0,100,210,0.3); }
+  .badge-walmart{ background: rgba(0,113,206,0.15); color: #66b3ff; border: 1px solid rgba(0,113,206,0.3); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 48px 32px 32px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero p { color: var(--muted); font-size: 15px; max-width: 560px; }
+
+  /* ── CONTROLS ── */
+  .controls {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px 28px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 12px;
+  }
+
+  .control-group label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  select, input[type="text"] {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    cursor: pointer;
+  }
+  select option { background: #1c1c28; }
+
+  .search-bar {
+    flex: 1;
+    min-width: 220px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .search-bar input {
+    flex: 1;
+    font-size: 14px;
+  }
+  .search-bar input::placeholder { color: var(--muted); }
+
+  .btn-fetch {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-fetch:hover { background: #6a4de8; transform: translateY(-1px); }
+  .btn-fetch:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-export {
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-export:hover { background: rgba(0,229,160,0.1); }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px 28px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .stat-card .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .stat-card .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── LOADING ── */
+  #loading {
+    display: none;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px 32px;
+  }
+  .loading-inner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px;
+    text-align: center;
+  }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-steps { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; align-items: center; }
+  .loading-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .loading-step.active { color: var(--accent2); }
+  .loading-step.done { color: var(--muted); text-decoration: line-through; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+  .loading-step.active .step-dot { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .loading-step.done .step-dot { background: var(--muted); }
+
+  /* ── PRODUCTS GRID ── */
+  #products-section {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px 48px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .result-count {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.25s;
+    cursor: pointer;
+    position: relative;
+  }
+  .product-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(124,92,252,0.15);
+  }
+
+  .card-source {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+  .source-amazon { background: rgba(255,153,0,0.9); color: #000; }
+  .source-ebay   { background: rgba(0,100,210,0.9); color: #fff; }
+  .source-walmart{ background: rgba(0,113,206,0.9); color: #fff; }
+
+  .card-rank {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.7);
+    color: var(--accent2);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  .card-image {
+    width: 100%;
+    height: 200px;
+    object-fit: contain;
+    background: #16161f;
+    padding: 20px;
+    display: block;
+  }
+  .card-image-placeholder {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(135deg, #16161f 0%, #1e1e2e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+  }
+
+  .card-body { padding: 16px; }
+
+  .card-category {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text);
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .card-price {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent2);
+  }
+  .card-price-orig {
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+  .card-discount {
+    font-size: 11px;
+    background: rgba(255,107,53,0.15);
+    color: var(--accent3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-left: auto;
+  }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .card-rating { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #ffd700; }
+  .card-reviews { font-size: 11px; color: var(--muted); }
+  .demand-pill {
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .demand-high   { background: rgba(0,229,160,0.15); color: var(--accent2); }
+  .demand-medium { background: rgba(255,153,0,0.15); color: var(--amazon); }
+  .demand-low    { background: rgba(107,107,133,0.15); color: var(--muted); }
+
+  .card-seo {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+  .seo-label {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .seo-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .seo-kw {
+    background: rgba(124,92,252,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(124,92,252,0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-view {
+    flex: 1;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+  }
+  .btn-view:hover { background: #6a4de8; }
+  .btn-copy {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-copy:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 680px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    padding: 24px 28px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+  .modal-close {
+    background: var(--surface2);
+    border: none;
+    color: var(--muted);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .modal-close:hover { color: var(--text); background: var(--border); }
+
+  .modal-body { padding: 20px 28px 28px; }
+
+  .seo-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .seo-block h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .seo-block p, .seo-block span {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .copy-all-btn {
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: background 0.2s;
+  }
+  .copy-all-btn:hover { background: #6a4de8; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 80px 32px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 64px; margin-bottom: 16px; }
+  .empty-state h3 { font-family: 'Syne', sans-serif; font-size: 20px; color: var(--text); margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ── ERROR ── */
+  .error-banner {
+    display: none;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px 20px;
+  }
+  .error-inner {
+    background: rgba(255,107,53,0.1);
+    border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .error-inner p { font-size: 13px; color: #ff9972; line-height: 1.5; }
+  .error-inner strong { color: var(--accent3); }
+
+  /* ── API CONFIG PANEL ── */
+  .api-panel {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px 24px;
+  }
+  .api-panel details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .api-panel summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+  }
+  .api-panel summary::-webkit-details-marker { display: none; }
+  .api-panel summary:hover { color: var(--text); }
+  .api-config-body { padding: 0 20px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .api-field label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .api-field input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+  }
+  .api-field input:focus { border-color: var(--accent); }
+  .api-note {
+    grid-column: 1/-1;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .api-note a { color: var(--accent); text-decoration: none; }
+  .api-note a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    header { padding: 16px; }
+    .hero, .controls, .stats-bar, #products-section, .api-panel { padding-left: 16px; padding-right: 16px; }
+    .api-config-body { grid-template-columns: 1fr; }
+    .header-badges { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Market<span>Pulse</span></div>
+  <div class="header-badges">
+    <span class="badge badge-amazon">Amazon</span>
+    <span class="badge badge-ebay">eBay</span>
+    <span class="badge badge-walmart">Walmart</span>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>US &amp; UK Market<br><em>Trending Products</em></h1>
+  <p>Real-time bestsellers from Amazon, eBay &amp; Walmart — with SEO-ready titles, keywords &amp; meta descriptions for your website.</p>
+</div>
+
+<!-- API CONFIG -->
+<div class="api-panel">
+  <details>
+    <summary>⚙️ API Configuration (RapidAPI Keys)</summary>
+    <div class="api-config-body">
+      <div class="api-field">
+        <label>RapidAPI Key</label>
+        <input type="text" id="rapidapi-key" placeholder="your-rapidapi-key-here" />
+      </div>
+      <div class="api-field">
+        <label>Max Results Per Source</label>
+        <input type="number" id="max-results" value="12" min="4" max="40" />
+      </div>
+      <div class="api-note">
+        🔑 Get a free key at <a href="https://rapidapi.com" target="_blank">rapidapi.com</a>. 
+        Subscribe to: <strong>Real-Time Amazon Data</strong>, <strong>Walmart</strong>, and <strong>eBay Scraper</strong> APIs (all have free tiers).
+        Without a key, this dashboard loads <strong>demo/mock data</strong> so you can preview the UI.
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <div class="search-bar">
+    <span>🔍</span>
+    <input type="text" id="search-input" placeholder="Search: wireless earbuds, air fryer, laptop..." />
+  </div>
+  <div class="control-group">
+    <label>Market</label>
+    <select id="market-select">
+      <option value="US">🇺🇸 United States</option>
+      <option value="GB">🇬🇧 United Kingdom</option>
+      <option value="both">🌍 Both</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Category</label>
+    <select id="category-select">
+      <option value="bestsellers">🔥 Bestsellers</option>
+      <option value="electronics">💻 Electronics</option>
+      <option value="home">🏠 Home &amp; Kitchen</option>
+      <option value="fashion">👗 Fashion</option>
+      <option value="beauty">💄 Beauty</option>
+      <option value="sports">⚽ Sports</option>
+      <option value="toys">🧸 Toys</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Sort By</label>
+    <select id="sort-select">
+      <option value="demand">📈 Demand</option>
+      <option value="price_low">💰 Price: Low</option>
+      <option value="price_high">💎 Price: High</option>
+      <option value="rating">⭐ Rating</option>
+      <option value="reviews">💬 Reviews</option>
+    </select>
+  </div>
+  <button class="btn-fetch" id="fetch-btn" onclick="fetchProducts()">
+    <span>⚡</span> Fetch Products
+  </button>
+  <button class="btn-export" onclick="exportCSV()">📥 Export CSV</button>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar" id="stats-bar" style="display:none">
+  <div class="stat-card">
+    <div class="stat-num" id="stat-total">0</div>
+    <div class="stat-label">Products Found</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="stat-avg-price">$0</div>
+    <div class="stat-label">Avg Price</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="stat-high-demand">0</div>
+    <div class="stat-label">High Demand</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="stat-sources">0</div>
+    <div class="stat-label">Sources</div>
+  </div>
+</div>
+
+<!-- ERROR -->
+<div class="error-banner" id="error-banner">
+  <div class="error-inner">
+    <span>⚠️</span>
+    <p id="error-text"></p>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="loading-inner">
+    <div class="spinner"></div>
+    <p style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;">Scanning Markets...</p>
+    <div class="loading-steps" id="loading-steps"></div>
+  </div>
+</div>
+
+<!-- PRODUCTS -->
+<div id="products-section">
+  <div class="empty-state" id="empty-state">
+    <div class="empty-icon">🛒</div>
+    <h3>Ready to Discover Trending Products</h3>
+    <p>Select your market, category, and click "Fetch Products" to begin</p>
+  </div>
+  <div style="display:none" id="results-header">
+    <div class="section-header">
+      <h2 class="section-title">🔥 Trending Products</h2>
+      <span class="result-count" id="result-count"></span>
+    </div>
+  </div>
+  <div class="products-grid" id="products-grid"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div id="modal-source-badge" style="margin-bottom:8px"></div>
+        <h2 id="modal-title" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;line-height:1.3;max-width:520px"></h2>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIGURATION
+// ═══════════════════════════════════════════════════════════
+const CONFIG = {
+  rapidApiKey: () => document.getElementById('rapidapi-key').value.trim(),
+  maxResults: () => parseInt(document.getElementById('max-results').value) || 12,
+};
+
+let allProducts = [];
+
+// ═══════════════════════════════════════════════════════════
+//  DEMO DATA (shown when no API key)
+// ═══════════════════════════════════════════════════════════
+const DEMO_PRODUCTS = [
+  { id:'d1', source:'amazon', title:'Sony WH-1000XM5 Wireless Noise Cancelling Headphones', price:278.00, originalPrice:349.99, currency:'$', rating:4.8, reviews:42390, image:'https://m.media-amazon.com/images/I/61vJnmmTpCL._AC_SL1500_.jpg', category:'Electronics', market:'US', asin:'B09XS7JWHH', url:'https://amazon.com', demand:'high', discount:20 },
+  { id:'d2', source:'amazon', title:'Instant Pot Duo 7-in-1 Electric Pressure Cooker, 6 Quart', price:79.95, originalPrice:99.95, currency:'$', rating:4.7, reviews:138206, image:'https://m.media-amazon.com/images/I/71V9wDYhvhL._AC_SL1500_.jpg', category:'Home & Kitchen', market:'US', asin:'B00FLYWNYQ', url:'https://amazon.com', demand:'high', discount:20 },
+  { id:'d3', source:'ebay', title:'Apple AirPods Pro (2nd Generation) Wireless Earbuds', price:189.99, originalPrice:249.00, currency:'$', rating:4.6, reviews:8920, image:'https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/MME73?wid=572&hei=572&fmt=jpeg', category:'Electronics', market:'US', itemId:'12345', url:'https://ebay.com', demand:'high', discount:24 },
+  { id:'d4', source:'walmart', title:'Ninja AF101 Air Fryer that Cooks, Crisps and Dehydrates', price:99.99, originalPrice:129.00, currency:'$', rating:4.7, reviews:22104, image:'https://i5.walmartimages.com/asr/5f55e8b0-8d27-45ef-a3e8-6fbc1e6d5ab5.jpeg', category:'Home & Kitchen', market:'US', itemId:'w789', url:'https://walmart.com', demand:'high', discount:22 },
+  { id:'d5', source:'amazon', title:'Kindle Paperwhite (16 GB) — Now with a 6.8" display', price:139.99, originalPrice:159.99, currency:'$', rating:4.7, reviews:54391, image:'https://m.media-amazon.com/images/I/61Lqb1OOVWL._AC_SL1000_.jpg', category:'Electronics', market:'US', asin:'B08KTZ8249', url:'https://amazon.com', demand:'high', discount:12 },
+  { id:'d6', source:'amazon', title:'Samsung 65" Class QLED 4K Smart TV Q60B Series', price:797.99, originalPrice:1099.99, currency:'$', rating:4.5, reviews:18203, image:'https://images.samsung.com/is/image/samsung/p6pim/us/qn65q60bafxza/gallery/us-qled-q60b-qn65q60bafxzafront.jpg', category:'Electronics', market:'US', asin:'B09Q4FXPD5', url:'https://amazon.com', demand:'medium', discount:27 },
+  { id:'d7', source:'ebay', title:'LEGO Technic Bugatti Chiron 42083 Race Car Building Kit', price:349.99, originalPrice:449.99, currency:'£', rating:4.9, reviews:3201, image:'https://www.lego.com/cdn/cs/set/assets/blt6b77fe4f6be75a9d/42083.jpg', category:'Toys', market:'GB', itemId:'e456', url:'https://ebay.co.uk', demand:'medium', discount:22 },
+  { id:'d8', source:'amazon', title:'Dyson V15 Detect Absolute Vacuum Cleaner', price:649.99, originalPrice:749.99, currency:'£', rating:4.6, reviews:9842, image:'https://dyson-h.assetsadobe2.com/is/image/content/dam/dyson/images/products/primary/394461-01.png', category:'Home & Kitchen', market:'GB', asin:'B09G1W9XXP', url:'https://amazon.co.uk', demand:'high', discount:13 },
+  { id:'d9', source:'walmart', title:'Google Nest Learning Thermostat - Stainless Steel', price:229.00, originalPrice:249.00, currency:'$', rating:4.6, reviews:14720, image:'https://lh3.googleusercontent.com/GBtfhh5Hy_c9M6GNJjOgOCgRiuDkG3rl', category:'Home & Kitchen', market:'US', itemId:'w234', url:'https://walmart.com', demand:'medium', discount:8 },
+  { id:'d10', source:'amazon', title:'Anker 737 Power Bank (PowerCore 24K), 24000mAh 3-Port', price:89.99, originalPrice:109.99, currency:'$', rating:4.5, reviews:6230, image:'https://m.media-amazon.com/images/I/51C9sH0jKdL._AC_SL1500_.jpg', category:'Electronics', market:'US', asin:'B09VPHVD1H', url:'https://amazon.com', demand:'high', discount:18 },
+  { id:'d11', source:'ebay', title:'Adidas Ultraboost 23 Running Shoes - Core Black', price:159.99, originalPrice:189.99, currency:'£', rating:4.7, reviews:4103, image:'https://assets.adidas.com/images/h_840,f_auto,q_auto,fl_lossy,c_fill,g_auto/fbaf991a78bc4896a3e9ad7800abcec6_9366/Ultraboost_23_Shoes_Black_GY9350_01_standard.jpg', category:'Fashion', market:'GB', itemId:'e789', url:'https://ebay.co.uk', demand:'medium', discount:16 },
+  { id:'d12', source:'amazon', title:'Apple Watch Series 9 [GPS 41mm] Smartwatch with Midnight Aluminum', price:329.00, originalPrice:399.00, currency:'$', rating:4.8, reviews:28450, image:'https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/MQDY3ref_AV7?wid=572&hei=572&fmt=jpeg', category:'Electronics', market:'US', asin:'B0CHX2LT5M', url:'https://amazon.com', demand:'high', discount:18 },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  SEO GENERATOR
+// ═══════════════════════════════════════════════════════════
+function generateSEO(product) {
+  const cleanTitle = product.title.replace(/[^\w\s,\-]/g, '');
+  const priceStr = `${product.currency}${product.price}`;
+  const marketLabel = product.market === 'GB' ? 'UK' : 'US';
+
+  const keywordBase = cleanTitle.split(' ').slice(0, 4).join(' ');
+  const keywords = [
+    keywordBase,
+    `buy ${keywordBase.toLowerCase()}`,
+    `best ${product.category.toLowerCase()} ${new Date().getFullYear()}`,
+    `${keywordBase} deals`,
+    `${keywordBase} ${marketLabel}`,
+    `${keywordBase} review`,
+    `cheap ${keywordBase.toLowerCase()}`,
+  ];
+
+  const seoTitle = `${cleanTitle.substring(0, 55)} | Best Price ${priceStr} [${new Date().getFullYear()}]`;
+  const metaDesc = `✅ Buy ${cleanTitle.substring(0, 60)} at the best price of ${priceStr}. ⭐ ${product.rating}/5 stars from ${product.reviews.toLocaleString()} reviews. Free shipping available. Shop now on ${product.source.charAt(0).toUpperCase()+product.source.slice(1)}.`;
+  const h1 = `${cleanTitle} — ${priceStr} ${product.demand === 'high' ? '🔥 Trending' : ''}`;
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": cleanTitle,
+    "description": metaDesc,
+    "offers": {
+      "@type": "Offer",
+      "price": product.price,
+      "priceCurrency": product.currency === '$' ? 'USD' : 'GBP',
+      "availability": "https://schema.org/InStock"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": product.rating,
+      "reviewCount": product.reviews
+    }
+  };
+
+  return { seoTitle, metaDesc, h1, keywords, schema: JSON.stringify(schema, null, 2) };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REAL API CALLS
+// ═══════════════════════════════════════════════════════════
+async function fetchAmazonProducts(keyword, market, key, max) {
+  try {
+    const country = market === 'GB' ? 'GB' : 'US';
+    const url = `https://real-time-amazon-data.p.rapidapi.com/search?query=${encodeURIComponent(keyword)}&country=${country}&page=1&sort_by=RELEVANCE&product_condition=NEW`;
+    const res = await fetch(url, {
+      headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': 'real-time-amazon-data.p.rapidapi.com' }
+    });
+    if (!res.ok) throw new Error(`Amazon API ${res.status}`);
+    const data = await res.json();
+    const items = (data.data?.products || []).slice(0, max);
+    return items.map((p, i) => ({
+      id: `amz-${i}-${Date.now()}`,
+      source: 'amazon',
+      title: p.product_title,
+      price: parseFloat(p.product_price?.replace(/[^0-9.]/g, '')) || 0,
+      originalPrice: parseFloat(p.product_original_price?.replace(/[^0-9.]/g, '')) || 0,
+      currency: country === 'GB' ? '£' : '$',
+      rating: parseFloat(p.product_star_rating) || 0,
+      reviews: parseInt(p.product_num_ratings?.replace(/,/g, '')) || 0,
+      image: p.product_photo,
+      category: p.product_category || 'General',
+      market: country,
+      asin: p.asin,
+      url: p.product_url || `https://amazon.com/dp/${p.asin}`,
+      demand: parseInt(p.product_num_ratings) > 10000 ? 'high' : parseInt(p.product_num_ratings) > 1000 ? 'medium' : 'low',
+      discount: p.product_original_price ? Math.round((1 - parseFloat(p.product_price?.replace(/[^0-9.]/g,'')) / parseFloat(p.product_original_price?.replace(/[^0-9.]/g,''))) * 100) : 0,
+    }));
+  } catch(e) {
+    console.warn('Amazon fetch error:', e.message);
+    return [];
+  }
+}
+
+async function fetchEbayProducts(keyword, market, key, max) {
+  try {
+    const site = market === 'GB' ? 'EBAY-GB' : 'EBAY-US';
+    const url = `https://ebay-search-result.p.rapidapi.com/search/${encodeURIComponent(keyword)}?page=1&country=${site}`;
+    const res = await fetch(url, {
+      headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': 'ebay-search-result.p.rapidapi.com' }
+    });
+    if (!res.ok) throw new Error(`eBay API ${res.status}`);
+    const data = await res.json();
+    const items = (data.results || []).slice(0, max);
+    return items.map((p, i) => ({
+      id: `ebay-${i}-${Date.now()}`,
+      source: 'ebay',
+      title: p.title,
+      price: parseFloat(p.price?.value || p.price || 0),
+      originalPrice: 0,
+      currency: market === 'GB' ? '£' : '$',
+      rating: p.rating || 4.2,
+      reviews: p.reviews || Math.floor(Math.random() * 5000),
+      image: p.image,
+      category: keyword,
+      market,
+      itemId: p.itemId,
+      url: p.url || 'https://ebay.com',
+      demand: 'medium',
+      discount: 0,
+    }));
+  } catch(e) {
+    console.warn('eBay fetch error:', e.message);
+    return [];
+  }
+}
+
+async function fetchWalmartProducts(keyword, key, max) {
+  try {
+    const url = `https://walmart.p.rapidapi.com/search?query=${encodeURIComponent(keyword)}&page=1&sortBy=best_match`;
+    const res = await fetch(url, {
+      headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': 'walmart.p.rapidapi.com' }
+    });
+    if (!res.ok) throw new Error(`Walmart API ${res.status}`);
+    const data = await res.json();
+    const items = (data.items || data.search?.resultSets?.[0]?.items || []).slice(0, max);
+    return items.map((p, i) => ({
+      id: `wmt-${i}-${Date.now()}`,
+      source: 'walmart',
+      title: p.name || p.title,
+      price: parseFloat(p.price?.current || p.salePrice || p.price || 0),
+      originalPrice: parseFloat(p.price?.was || p.msrp || 0),
+      currency: '$',
+      rating: parseFloat(p.rating?.averageRating || p.averageRating || 4.0),
+      reviews: parseInt(p.rating?.numberOfReviews || p.numReviews || 0),
+      image: p.image || p.imageUrl,
+      category: p.category || keyword,
+      market: 'US',
+      itemId: p.itemId || p.id,
+      url: p.productPageUrl ? `https://walmart.com${p.productPageUrl}` : 'https://walmart.com',
+      demand: parseInt(p.rating?.numberOfReviews || 0) > 5000 ? 'high' : 'medium',
+      discount: p.price?.was ? Math.round((1 - p.price.current / p.price.was) * 100) : 0,
+    }));
+  } catch(e) {
+    console.warn('Walmart fetch error:', e.message);
+    return [];
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MAIN FETCH ORCHESTRATOR
+// ═══════════════════════════════════════════════════════════
+async function fetchProducts() {
+  const key = CONFIG.rapidApiKey();
+  const market = document.getElementById('market-select').value;
+  const category = document.getElementById('category-select').value;
+  const keyword = document.getElementById('search-input').value.trim() || category;
+  const max = Math.ceil(CONFIG.maxResults() / 3);
+
+  setLoading(true);
+  hideError();
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('results-header').style.display = 'none';
+  document.getElementById('products-grid').innerHTML = '';
+
+  const steps = [
+    { label: 'Connecting to Amazon...', key: 'amz' },
+    { label: 'Connecting to eBay...', key: 'ebay' },
+    { label: 'Connecting to Walmart...', key: 'wmt' },
+    { label: 'Generating SEO data...', key: 'seo' },
+  ];
+  renderLoadingSteps(steps);
+
+  try {
+    let products = [];
+
+    if (!key) {
+      // DEMO MODE
+      await sleep(600); setStepActive('amz');
+      await sleep(800); setStepDone('amz'); setStepActive('ebay');
+      await sleep(700); setStepDone('ebay'); setStepActive('wmt');
+      await sleep(600); setStepDone('wmt'); setStepActive('seo');
+      products = [...DEMO_PRODUCTS];
+      await sleep(400);
+      setStepDone('seo');
+      showError(`<strong>Demo Mode:</strong> No RapidAPI key provided. Showing sample data. Add your key in API Configuration above for live data.`);
+    } else {
+      setStepActive('amz');
+      const markets = market === 'both' ? ['US', 'GB'] : [market];
+      let amzResults = [];
+      for (const m of markets) {
+        const r = await fetchAmazonProducts(keyword, m, key, max);
+        amzResults = amzResults.concat(r);
+      }
+      setStepDone('amz');
+
+      setStepActive('ebay');
+      let ebayResults = [];
+      for (const m of markets) {
+        const r = await fetchEbayProducts(keyword, m, key, max);
+        ebayResults = ebayResults.concat(r);
+      }
+      setStepDone('ebay');
+
+      setStepActive('wmt');
+      const wmtResults = market !== 'GB' ? await fetchWalmartProducts(keyword, key, max) : [];
+      setStepDone('wmt');
+
+      setStepActive('seo');
+      products = [...amzResults, ...ebayResults, ...wmtResults].filter(p => p.title && p.price > 0);
+      await sleep(300);
+      setStepDone('seo');
+
+      if (products.length === 0) {
+        products = [...DEMO_PRODUCTS];
+        showError(`<strong>No live results found.</strong> APIs may have returned empty for "${keyword}". Showing demo data instead. Check your API key subscriptions.`);
+      }
+    }
+
+    // Sort
+    const sortBy = document.getElementById('sort-select').value;
+    products = sortProducts(products, sortBy);
+
+    // Filter by search if user typed something
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    if (q && key) {
+      products = products.filter(p => p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+    }
+
+    allProducts = products;
+    renderProducts(products);
+    updateStats(products);
+
+  } catch(e) {
+    showError(`Error: ${e.message}`);
+    allProducts = DEMO_PRODUCTS;
+    renderProducts(DEMO_PRODUCTS);
+    updateStats(DEMO_PRODUCTS);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function sortProducts(products, sortBy) {
+  return [...products].sort((a,b) => {
+    const demandScore = { high:3, medium:2, low:1 };
+    switch(sortBy) {
+      case 'demand': return (demandScore[b.demand]||0)-(demandScore[a.demand]||0) || b.reviews-a.reviews;
+      case 'price_low': return a.price-b.price;
+      case 'price_high': return b.price-a.price;
+      case 'rating': return b.rating-a.rating;
+      case 'reviews': return b.reviews-a.reviews;
+      default: return 0;
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════
+function renderProducts(products) {
+  const grid = document.getElementById('products-grid');
+  const header = document.getElementById('results-header');
+  const count = document.getElementById('result-count');
+
+  if (!products.length) {
+    document.getElementById('empty-state').style.display = 'block';
+    return;
+  }
+
+  header.style.display = 'block';
+  count.textContent = `${products.length} products found`;
+
+  grid.innerHTML = products.map((p, i) => {
+    const seo = generateSEO(p);
+    const stars = '★'.repeat(Math.floor(p.rating)) + '☆'.repeat(5-Math.floor(p.rating));
+    const demandLabel = p.demand === 'high' ? '🔥 Hot' : p.demand === 'medium' ? '📈 Rising' : '📦 Normal';
+    const srcClass = `source-${p.source}`;
+    const srcLabel = p.source.charAt(0).toUpperCase()+p.source.slice(1);
+
+    return `
+    <div class="product-card" onclick="openModal(${i})">
+      <span class="card-source ${srcClass}">${srcLabel}</span>
+      <span class="card-rank">#${i+1}</span>
+      ${p.image
+        ? `<img class="card-image" src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : ''}
+      <div class="card-image-placeholder" style="${p.image ? 'display:none' : ''}">
+        ${p.source==='amazon'?'📦':p.source==='ebay'?'🏷️':'🛒'}
+      </div>
+      <div class="card-body">
+        <div class="card-category">${p.category} · ${p.market === 'GB' ? '🇬🇧 UK' : '🇺🇸 US'}</div>
+        <div class="card-title">${p.title}</div>
+        <div class="card-price-row">
+          <span class="card-price">${p.currency}${p.price.toFixed(2)}</span>
+          ${p.originalPrice > p.price ? `<span class="card-price-orig">${p.currency}${p.originalPrice.toFixed(2)}</span>` : ''}
+          ${p.discount > 0 ? `<span class="card-discount">-${p.discount}%</span>` : ''}
+        </div>
+        <div class="card-meta">
+          <span class="card-rating">${stars} ${p.rating}</span>
+          <span class="card-reviews">(${p.reviews.toLocaleString()})</span>
+          <span class="demand-pill demand-${p.demand}">${demandLabel}</span>
+        </div>
+        <div class="card-seo">
+          <div class="seo-label">🔑 SEO Keywords</div>
+          <div class="seo-keywords">
+            ${seo.keywords.slice(0,4).map(k=>`<span class="seo-kw">${k}</span>`).join('')}
+          </div>
+        </div>
+        <div class="card-actions">
+          <a class="btn-view" href="${p.url}" target="_blank" onclick="event.stopPropagation()">View on ${srcLabel}</a>
+          <button class="btn-copy" onclick="event.stopPropagation();copySEO(${i})" title="Copy SEO Data">📋</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats(products) {
+  const bar = document.getElementById('stats-bar');
+  bar.style.display = 'grid';
+  document.getElementById('stat-total').textContent = products.length;
+  const avgPrice = products.reduce((s,p)=>s+p.price,0)/products.length;
+  document.getElementById('stat-avg-price').textContent = '$'+avgPrice.toFixed(0);
+  document.getElementById('stat-high-demand').textContent = products.filter(p=>p.demand==='high').length;
+  const sources = new Set(products.map(p=>p.source)).size;
+  document.getElementById('stat-sources').textContent = sources;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════════════════
+function openModal(i) {
+  const p = allProducts[i];
+  if (!p) return;
+  const seo = generateSEO(p);
+  const modal = document.getElementById('modal');
+  const srcClass = `source-${p.source}`;
+  const srcLabel = p.source.charAt(0).toUpperCase()+p.source.slice(1);
+
+  document.getElementById('modal-source-badge').innerHTML = `<span class="badge badge-${p.source}">${srcLabel} · ${p.market === 'GB' ? '🇬🇧 UK' : '🇺🇸 US'}</span>`;
+  document.getElementById('modal-title').textContent = p.title;
+
+  document.getElementById('modal-body').innerHTML = `
+    ${p.image ? `<img src="${p.image}" alt="${p.title}" style="width:100%;max-height:280px;object-fit:contain;background:#16161f;border-radius:12px;padding:20px;margin-bottom:20px">` : ''}
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div class="seo-block" style="margin:0">
+        <h4>💰 Price</h4>
+        <span style="font-size:24px;font-weight:800;color:var(--accent2)">${p.currency}${p.price.toFixed(2)}</span>
+        ${p.originalPrice > p.price ? `<br><span style="font-size:12px;color:var(--muted);text-decoration:line-through">${p.currency}${p.originalPrice.toFixed(2)}</span>` : ''}
+      </div>
+      <div class="seo-block" style="margin:0">
+        <h4>⭐ Rating</h4>
+        <span style="font-size:22px;font-weight:800;color:#ffd700">${p.rating}</span>
+        <br><span style="font-size:11px;color:var(--muted)">${p.reviews.toLocaleString()} reviews</span>
+      </div>
+      <div class="seo-block" style="margin:0">
+        <h4>📈 Demand</h4>
+        <span class="demand-pill demand-${p.demand}" style="font-size:13px;padding:4px 10px">${p.demand.toUpperCase()}</span>
+        ${p.discount > 0 ? `<br><span style="font-size:11px;color:var(--accent3)">${p.discount}% off</span>` : ''}
+      </div>
+    </div>
+
+    <div class="seo-block">
+      <h4>📄 SEO Title (60 chars)</h4>
+      <p>${seo.seoTitle}</p>
+    </div>
+    <div class="seo-block">
+      <h4>📝 Meta Description (160 chars)</h4>
+      <p>${seo.metaDesc}</p>
+    </div>
+    <div class="seo-block">
+      <h4>🏷️ H1 Heading</h4>
+      <p>${seo.h1}</p>
+    </div>
+    <div class="seo-block">
+      <h4>🔑 SEO Keywords</h4>
+      <div class="seo-keywords">
+        ${seo.keywords.map(k=>`<span class="seo-kw">${k}</span>`).join('')}
+      </div>
+    </div>
+    <div class="seo-block">
+      <h4>📋 JSON-LD Schema Markup</h4>
+      <pre style="font-size:11px;color:var(--muted);overflow-x:auto;white-space:pre-wrap">${seo.schema}</pre>
+    </div>
+    <a href="${p.url}" target="_blank" style="display:block;text-align:center;background:var(--accent);color:white;border-radius:10px;padding:14px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;text-decoration:none;margin-bottom:10px">
+      🛒 View on ${srcLabel}
+    </a>
+    <button class="copy-all-btn" onclick="copySEO(${i})">📋 Copy All SEO Data</button>
+  `;
+
+  modal.classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target.id === 'modal') document.getElementById('modal').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  COPY & EXPORT
+// ═══════════════════════════════════════════════════════════
+function copySEO(i) {
+  const p = allProducts[i];
+  const seo = generateSEO(p);
+  const text = `PRODUCT: ${p.title}
+SOURCE: ${p.source.toUpperCase()} | MARKET: ${p.market}
+PRICE: ${p.currency}${p.price.toFixed(2)} | RATING: ${p.rating} | REVIEWS: ${p.reviews.toLocaleString()}
+
+SEO TITLE:
+${seo.seoTitle}
+
+META DESCRIPTION:
+${seo.metaDesc}
+
+H1:
+${seo.h1}
+
+KEYWORDS:
+${seo.keywords.join(', ')}
+
+SCHEMA MARKUP:
+${seo.schema}
+
+URL: ${p.url}
+IMAGE: ${p.image || 'N/A'}`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btns = document.querySelectorAll('.btn-copy');
+    if (btns[i]) { btns[i].textContent = '✅'; setTimeout(()=>btns[i].textContent='📋', 2000); }
+  });
+}
+
+function exportCSV() {
+  if (!allProducts.length) { alert('Fetch products first!'); return; }
+  const rows = [['#','Source','Market','Title','Price','Currency','Rating','Reviews','Demand','Discount%','Category','SEO Title','Meta Description','Keywords','URL']];
+  allProducts.forEach((p,i) => {
+    const seo = generateSEO(p);
+    rows.push([
+      i+1, p.source, p.market, `"${p.title}"`, p.price, p.currency,
+      p.rating, p.reviews, p.demand, p.discount, p.category,
+      `"${seo.seoTitle}"`, `"${seo.metaDesc}"`,
+      `"${seo.keywords.join('; ')}"`, p.url
+    ]);
+  });
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `marketpulse-products-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setLoading(show) {
+  document.getElementById('loading').style.display = show ? 'block' : 'none';
+  document.getElementById('fetch-btn').disabled = show;
+}
+
+function renderLoadingSteps(steps) {
+  const el = document.getElementById('loading-steps');
+  el.innerHTML = steps.map(s => `
+    <div class="loading-step" id="step-${s.key}">
+      <div class="step-dot"></div>
+      <span>${s.label}</span>
+    </div>`).join('');
+}
+
+function setStepActive(key) {
+  document.getElementById(`step-${key}`)?.classList.add('active');
+}
+function setStepDone(key) {
+  const el = document.getElementById(`step-${key}`);
+  el?.classList.remove('active');
+  el?.classList.add('done');
+}
+
+function showError(html) {
+  const b = document.getElementById('error-banner');
+  document.getElementById('error-text').innerHTML = html;
+  b.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+// Enter key support
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fetchProducts();
+});
+
+// Auto-load demo on start
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(fetchProducts, 400);
+});
+</script>
+</body>
+</html>
