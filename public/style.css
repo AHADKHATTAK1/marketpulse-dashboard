@@ -149,6 +149,31 @@ header {
 .badge-ebay   { background: rgba(0, 100, 210, 0.15); color: #60a5fa; border: 1px solid rgba(0, 100, 210, 0.3); }
 .badge-walmart{ background: rgba(0, 113, 206, 0.15); color: #38bdf8; border: 1px solid rgba(0, 113, 206, 0.3); }
 
+.filter-badge {
+  cursor: pointer;
+  outline: none;
+  background: transparent;
+  transition: var(--transition-smooth);
+}
+.filter-badge:hover {
+  transform: translateY(-1px);
+}
+.filter-badge.active.badge-amazon {
+  background: var(--amazon-color);
+  color: #000;
+  box-shadow: 0 0 12px rgba(255, 153, 0, 0.4);
+}
+.filter-badge.active.badge-ebay {
+  background: var(--ebay-color);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(0, 100, 210, 0.4);
+}
+.filter-badge.active.badge-walmart {
+  background: var(--walmart-color);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(0, 113, 206, 0.4);
+}
+
 /* ── LAYOUT CONTAINER ── */
 .container {
   max-width: 1340px;

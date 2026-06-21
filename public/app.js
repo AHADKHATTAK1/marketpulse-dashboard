@@ -5,6 +5,7 @@ let activeTab = 'explorer';
 let scrapedProducts = [];
 let savedProducts = [];
 let currentEditingProduct = null;
+let activeSourceFilter = null; // Filter explorer grid by brand/source
 
 // ═══════════════════════════════════════════════════════════
 //  APP INITIALIZATION
@@ -58,6 +59,12 @@ async function fetchProducts() {
   const market = document.getElementById('market-select').value;
   const category = document.getElementById('category-select').value;
 
+  // Reset active source filters when a new search is initiated
+  activeSourceFilter = null;
+  document.querySelectorAll('.filter-badge').forEach(btn => {
+    btn.classList.remove('active');
+  });
+
   // Toggle UI Loading states
   document.getElementById('loading').style.display = 'block';
   document.getElementById('empty-state').style.display = 'none';
@@ -108,6 +115,11 @@ function applyFilters() {
   const sortBy = document.getElementById('sort-select').value;
   let products = [...scrapedProducts];
 
+  // Apply source brand filter if active
+  if (activeSourceFilter) {
+    products = products.filter(p => p.source === activeSourceFilter);
+  }
+
   // Sort logic
   const demandScore = { high: 3, medium: 2, low: 1 };
   products.sort((a, b) => {
@@ -129,10 +141,16 @@ function applyFilters() {
 
   renderProductsGrid(products, 'products-grid', false);
   
-  if (products.length > 0) {
+  if (scrapedProducts.length > 0) {
     document.getElementById('products-section').style.display = 'block';
     document.getElementById('results-header').style.display = 'flex';
-    document.getElementById('result-count').textContent = `${products.length} products found`;
+    
+    if (activeSourceFilter) {
+      const srcName = activeSourceFilter.charAt(0).toUpperCase() + activeSourceFilter.slice(1);
+      document.getElementById('result-count').textContent = `Showing ${products.length} ${srcName} products (filtered from ${scrapedProducts.length} total)`;
+    } else {
+      document.getElementById('result-count').textContent = `${products.length} products found`;
+    }
   } else {
     document.getElementById('products-section').style.display = 'none';
   }
@@ -628,4 +646,27 @@ async function syncToGoogleDrive() {
     syncBtn.disabled = false;
     syncBtn.textContent = originalText;
   }
+}
+
+// Toggle product source filter (Amazon/eBay/Walmart) in Explorer view
+function toggleSourceFilter(source) {
+  // If clicking active filter, clear it. Otherwise, set it.
+  if (activeSourceFilter === source) {
+    activeSourceFilter = null;
+  } else {
+    activeSourceFilter = source;
+  }
+
+  // Update visual active classes on header filter buttons
+  document.querySelectorAll('.filter-badge').forEach(btn => {
+    btn.classList.remove('active');
+  });
+
+  if (activeSourceFilter) {
+    const activeBtn = document.getElementById(`btn-filter-${activeSourceFilter}`);
+    if (activeBtn) activeBtn.classList.add('active');
+  }
+
+  // Apply filters and refresh grid
+  applyFilters();
 }
