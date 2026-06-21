@@ -420,6 +420,30 @@ app.get('/api/fetch-products', async (req, res) => {
         const wmt = await fetchWalmartLive(searchQuery, apiKey, itemsPerSource);
         products = products.concat(wmt);
       }
+
+      // ── LIVE FALLBACK FOR 403/429 ERRORS OR EMPTY RESULTS ──
+      if (products.length === 0) {
+        console.log(`[API] Live endpoints returned 0 items. Running fallback scrapers.`);
+        mode = 'live-fallback';
+
+        // 1. eBay public scraper
+        for (const m of markets) {
+          const ebayData = await scrapeEbayPublic(searchQuery, m, itemsPerSource);
+          products = products.concat(ebayData);
+        }
+
+        // 2. Amazon mock data generator
+        for (const m of markets) {
+          const amzMock = generateMockProducts(searchQuery, 'amazon', m, itemsPerSource);
+          products = products.concat(amzMock);
+        }
+
+        // 3. Walmart mock data generator (US only)
+        if (market !== 'GB') {
+          const wmtMock = generateMockProducts(searchQuery, 'walmart', 'US', itemsPerSource);
+          products = products.concat(wmtMock);
+        }
+      }
     }
 
     // Attach basic generated SEO to all products

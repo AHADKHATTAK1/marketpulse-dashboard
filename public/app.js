@@ -80,7 +80,9 @@ async function fetchProducts() {
 
     // Show Demo mode warning if backend is running in demo mode
     if (data.mode === 'demo') {
-      showBanner('mode-banner', 'mode-text', `<strong>Demo Mode Active:</strong> No RapidAPI key is configured in your backend <code>.env</code> file. Showing live scraped results from <strong>eBay</strong> alongside simulated hot products from <strong>Amazon</strong> & <strong>Walmart</strong>. Add your RapidAPI key to unlock full live requests.`);
+      showBanner('mode-banner', 'mode-text', `<strong>Demo Mode Active:</strong> No RapidAPI key is configured in your backend <code>.env</code> file. Showing live scraped results from <strong>eBay</strong> alongside simulated hot products from <strong>Amazon</strong> & <strong>Walmart</strong>.`);
+    } else if (data.mode === 'live-fallback') {
+      showBanner('mode-banner', 'mode-text', `<strong>Subscription Warning:</strong> Your RapidAPI key was rejected (Error 403/429) or returned 0 items. Please verify that your key is subscribed to the <em>Real-Time Amazon Data</em>, <em>Real-Time eBay Data</em>, and <em>Walmart Data</em> plans on RapidAPI. <strong>Showing fallback live search results from eBay and simulated items instead.</strong>`);
     } else {
       showBanner('mode-banner', 'mode-text', `<strong>Live Mode Connected:</strong> Successfully fetched real-time trending products from live e-commerce databases.`);
     }
