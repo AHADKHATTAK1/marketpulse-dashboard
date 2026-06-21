@@ -170,6 +170,38 @@
         </div>
       </div>
 
+      <!-- GOOGLE DRIVE BACKUP CARD -->
+      <div class="backup-card" id="backup-card">
+        <div class="backup-info">
+          <h3>☁️ Google Drive Database Backup</h3>
+          <p>Securely sync your local database (saved products & configurations) to your Google Drive.</p>
+          <div class="backup-status-row">
+            <span class="status-label">Connection Status:</span>
+            <span class="status-badge status-unconfigured" id="drive-status-badge">Checking...</span>
+          </div>
+          <p class="service-email-label" id="service-email-container" style="display:none">
+            Share folder with: <code id="service-account-email">email@service.com</code>
+          </p>
+        </div>
+        <div class="backup-actions">
+          <button class="btn-backup-sync" id="btn-drive-sync" onclick="syncToGoogleDrive()" disabled>
+            🔄 Sync to Google Drive
+          </button>
+        </div>
+        
+        <details class="backup-instructions">
+          <summary>⚙️ How to configure Google Drive Backup?</summary>
+          <ol>
+            <li>Go to the <strong>Google Cloud Console</strong>, create a project, and enable the <strong>Google Drive API</strong>.</li>
+            <li>Create a <strong>Service Account</strong>, create a JSON key, and download it.</li>
+            <li>Rename the file to <code>credentials.json</code> and place it inside the <code>data/</code> folder in this project root (a template <code>credentials.json.template</code> is provided there).</li>
+            <li>Create a new folder in your personal Google Drive, copy the Folder ID from the URL bar, and paste it into the <code>GD_FOLDER_ID</code> variable in your project's <code>.env</code> file.</li>
+            <li><strong>Crucial:</strong> Share that Google Drive folder with the Service Account email address displayed above!</li>
+            <li>Restart your Express server.</li>
+          </ol>
+        </details>
+      </div>
+
       <!-- SAVED PRODUCTS GRID -->
       <div id="imports-section">
         <div class="empty-state" id="imports-empty-state">

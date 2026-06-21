@@ -5,6 +5,7 @@ const fs = require('fs');
 const axios = require('axios');
 const cheerio = require('cheerio');
 require('dotenv').config();
+const { google } = require('googleapis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -636,6 +637,116 @@ app.get('/api/export', (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
   res.status(200).send(csvContent);
+});
+
+// ═══════════════════════════════════════════════════════════
+//  GOOGLE DRIVE BACKUP SERVICES
+// ═══════════════════════════════════════════════════════════
+const CREDENTIALS_FILE = path.join(DATA_DIR, 'credentials.json');
+
+function getDriveClient() {
+  if (!fs.existsSync(CREDENTIALS_FILE)) {
+    throw new Error('Google credentials.json file not found in data directory.');
+  }
+  const folderId = process.env.GD_FOLDER_ID;
+  if (!folderId) {
+    throw new Error('GD_FOLDER_ID is not configured in your .env file.');
+  }
+  const auth = new google.auth.GoogleAuth({
+    keyFile: CREDENTIALS_FILE,
+    scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'],
+  });
+  return google.drive({ version: 'v3', auth });
+}
+
+async function uploadDatabaseToDrive() {
+  const drive = getDriveClient();
+  const folderId = process.env.GD_FOLDER_ID;
+  const fileName = 'marketpulse-saved-products.json';
+
+  const response = await drive.files.list({
+    q: `name = '${fileName}' and '${folderId}' in parents and trashed = false`,
+    fields: 'files(id, name)',
+    spaces: 'drive',
+  });
+
+  const files = response.data.files;
+  const fileMetadata = {
+    name: fileName,
+    parents: [folderId],
+  };
+
+  const media = {
+    mimeType: 'application/json',
+    body: fs.createReadStream(DB_FILE),
+  };
+
+  if (files && files.length > 0) {
+    const fileId = files[0].id;
+    console.log(`[Drive] Updating existing backup: ${fileId}`);
+    const updateRes = await drive.files.update({
+      fileId: fileId,
+      media: media,
+      fields: 'id, name, modifiedTime',
+    });
+    return { status: 'updated', fileId: updateRes.data.id, modifiedTime: updateRes.data.modifiedTime };
+  } else {
+    console.log(`[Drive] Creating new backup file.`);
+    const createRes = await drive.files.create({
+      resource: fileMetadata,
+      media: media,
+      fields: 'id, name',
+    });
+    return { status: 'created', fileId: createRes.data.id };
+  }
+}
+
+// Route: Get Google Drive Backup configuration status
+app.get('/api/backup/status', (req, res) => {
+  const credsExist = fs.existsSync(CREDENTIALS_FILE);
+  const folderId = process.env.GD_FOLDER_ID || '';
+  
+  let clientEmail = '';
+  if (credsExist) {
+    try {
+      const creds = JSON.parse(fs.readFileSync(CREDENTIALS_FILE, 'utf8'));
+      clientEmail = creds.client_email || '';
+    } catch (e) {
+      console.warn('[Drive] Credentials parse error:', e.message);
+    }
+  }
+
+  res.json({
+    success: true,
+    configured: credsExist && folderId.trim().length > 0,
+    hasCredentials: credsExist,
+    hasFolderId: folderId.trim().length > 0,
+    clientEmail: clientEmail,
+    folderId: folderId
+  });
+});
+
+// Route: Trigger manual backup to Google Drive
+app.post('/api/backup/trigger', async (req, res) => {
+  try {
+    const db = readDB();
+    if (db.length === 0) {
+      return res.status(400).json({ success: false, message: 'Your database is empty! Save some products first before backing up.' });
+    }
+    const result = await uploadDatabaseToDrive();
+    res.json({
+      success: true,
+      message: `Backup successfully ${result.status === 'updated' ? 'updated' : 'created'} in Google Drive!`,
+      details: result
+    });
+  } catch (e) {
+    console.error('[Drive Backup Error]:', e.message);
+    res.status(500).json({
+      success: false,
+      message: 'Google Drive backup failed',
+      error: e.message
+    });
+  }
 });
 
 // Fallback to serve index.html for undefined routes

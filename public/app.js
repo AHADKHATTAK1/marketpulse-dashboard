@@ -12,6 +12,8 @@ let currentEditingProduct = null;
 document.addEventListener('DOMContentLoaded', () => {
   // Sync the total saved count badge on load
   updateSavedCountBadge();
+  // Check Google Drive backup configuration status
+  checkBackupStatus();
 
   // Handle enter key on search input
   document.getElementById('search-input').addEventListener('keydown', (e) => {
@@ -44,6 +46,7 @@ function switchTab(tab) {
     document.querySelector('.tab-btn[onclick="switchTab(\'imports\')"]').classList.add('active');
     document.getElementById('panel-imports').classList.add('active');
     fetchSavedProducts(); // Refresh saved products list
+    checkBackupStatus();  // Check backup status
   }
 }
 
@@ -541,4 +544,86 @@ function triggerExport(format) {
   
   // Point browser window to download endpoint
   window.location.href = `/api/export?format=${format}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GOOGLE DRIVE BACKUP FRONTEND INTERACTION
+// ═══════════════════════════════════════════════════════════
+
+// Fetch current backup configuration status from Express backend
+async function checkBackupStatus() {
+  try {
+    const res = await fetch('/api/backup/status');
+    const data = await res.json();
+
+    const badge = document.getElementById('drive-status-badge');
+    const syncBtn = document.getElementById('btn-drive-sync');
+    const emailContainer = document.getElementById('service-email-container');
+    const emailField = document.getElementById('service-account-email');
+
+    if (!badge || !syncBtn) return;
+
+    if (data.success) {
+      if (data.configured) {
+        // Connected & Ready
+        badge.className = 'status-badge status-ready';
+        badge.textContent = 'Connected & Ready';
+        syncBtn.disabled = false;
+        
+        if (data.clientEmail) {
+          emailField.textContent = data.clientEmail;
+          emailContainer.style.display = 'block';
+        } else {
+          emailContainer.style.display = 'none';
+        }
+      } else {
+        // Unconfigured
+        badge.className = 'status-badge status-unconfigured';
+        badge.textContent = 'Unconfigured';
+        syncBtn.disabled = true;
+
+        if (data.clientEmail) {
+          // Credentials exist but folder ID or share permissions missing
+          emailField.textContent = data.clientEmail;
+          emailContainer.style.display = 'block';
+          badge.textContent = 'Folder Missing / Share required';
+        } else {
+          // No credentials file at all
+          emailContainer.style.display = 'none';
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking Google Drive backup status:', error);
+  }
+}
+
+// Trigger database sync to Google Drive folder
+async function syncToGoogleDrive() {
+  const syncBtn = document.getElementById('btn-drive-sync');
+  if (!syncBtn || syncBtn.disabled) return;
+
+  const originalText = syncBtn.textContent;
+  syncBtn.disabled = true;
+  syncBtn.textContent = '🔄 Syncing...';
+
+  try {
+    const res = await fetch('/api/backup/trigger', {
+      method: 'POST'
+    });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      showToast(data.message || 'Database backed up to Google Drive!');
+    } else {
+      showToast(data.message || 'Drive backup failed.', 'error');
+      alert(`Google Drive Backup Error: ${data.message || 'Unknown error'}\n\nVerify that:\n1. Your Google Service Account key is placed in data/credentials.json\n2. The Folder ID in your .env file is correct\n3. You shared the folder with the service account email!`);
+    }
+  } catch (error) {
+    console.error('Error backing up to Google Drive:', error);
+    showToast('Drive backup connection error.', 'error');
+  } finally {
+    syncBtn.disabled = false;
+    syncBtn.textContent = originalText;
+  }
 }
