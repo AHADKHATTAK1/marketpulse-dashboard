@@ -10,7 +10,7 @@
 
   <!-- HEADER -->
   <header>
-    <div class="logo">Market<span>Pulse</span></div>
+    <div class="logo">Market<span>Pulse</span> <span class="logo-live-dot" id="live-dot" title="Auto-Update Active"></span></div>
     <nav class="tabs">
       <button class="tab-btn active" onclick="switchTab('explorer')">🌐 Market Explorer</button>
       <button class="tab-btn" onclick="switchTab('imports')">
@@ -23,6 +23,33 @@
       <button class="badge badge-walmart filter-badge" id="btn-filter-walmart" onclick="toggleSourceFilter('walmart')" title="Filter by Walmart">Walmart</button>
     </div>
   </header>
+
+  <!-- AUTO-UPDATE TICKER BAR -->
+  <div class="auto-ticker-bar" id="auto-ticker-bar">
+    <div class="ticker-left">
+      <span class="ticker-pulse" id="ticker-pulse-dot"></span>
+      <span class="ticker-label" id="ticker-status-label">Auto-Update: OFF</span>
+    </div>
+    <div class="ticker-center" id="ticker-center">
+      <span class="ticker-next-label">Next refresh in:</span>
+      <span class="ticker-countdown" id="ticker-countdown">--:--</span>
+      <div class="ticker-progress-wrap">
+        <div class="ticker-progress-bar" id="ticker-progress-bar"></div>
+      </div>
+    </div>
+    <div class="ticker-right">
+      <span class="ticker-cycle-label" id="ticker-cycle-info"></span>
+      <select class="ticker-interval-select" id="auto-interval-select" onchange="changeAutoInterval()" title="Auto-refresh interval">
+        <option value="60">⏱ 1 min</option>
+        <option value="120" selected>⏱ 2 min</option>
+        <option value="300">⏱ 5 min</option>
+        <option value="600">⏱ 10 min</option>
+        <option value="1800">⏱ 30 min</option>
+      </select>
+      <button class="ticker-cycle-btn" id="btn-cycle-toggle" onclick="toggleCycleCategories()" title="Auto-cycle through all categories">🔄 Cycle Categories</button>
+      <button class="ticker-toggle-btn" id="btn-auto-toggle" onclick="toggleAutoUpdate()">▶ Start Auto</button>
+    </div>
+  </div>
 
   <!-- MAIN WRAPPER -->
   <main class="container">
@@ -80,6 +107,15 @@
           <button class="btn-fetch" id="fetch-btn" onclick="fetchProducts()">
             <span class="btn-icon">⚡</span> Fetch Products
           </button>
+        </div>
+
+        <!-- AUTO UPDATE STATUS ROW -->
+        <div class="auto-update-info-row" id="auto-update-info-row" style="display:none">
+          <div class="au-info-chip au-chip-live">🟢 AUTO-UPDATING</div>
+          <div class="au-info-chip">🔄 Refresh #<span id="au-refresh-count">0</span></div>
+          <div class="au-info-chip">📂 Category: <strong id="au-current-cat">—</strong></div>
+          <div class="au-info-chip">🕐 Last: <span id="au-last-time">—</span></div>
+          <div class="au-info-chip au-chip-products">📦 <span id="au-total-fetched">0</span> total fetched</div>
         </div>
       </div>
 

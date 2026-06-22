@@ -5,24 +5,33 @@ let activeTab = 'explorer';
 let scrapedProducts = [];
 let savedProducts = [];
 let currentEditingProduct = null;
-let activeSourceFilter = null; // Filter explorer grid by brand/source
+let activeSourceFilter = null;
+
+// ── AUTO-UPDATE STATE ──
+let autoUpdateActive = false;
+let autoUpdatePaused = false;
+let autoIntervalSec = 120;       // default 2 min
+let autoCountdownSec = 120;
+let autoCountdownTimer = null;   // setInterval for countdown tick
+let autoCycleEnabled = false;
+let autoRefreshCount = 0;
+let autoTotalFetched = 0;
+let autoCycleIndex = 0;
+const AUTO_CATEGORIES = ['bestsellers','electronics','home','fashion','beauty','sports','toys'];
 
 // ═══════════════════════════════════════════════════════════
 //  APP INITIALIZATION
 // ═══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  // Sync the total saved count badge on load
   updateSavedCountBadge();
-  // Check Google Drive backup configuration status
   checkBackupStatus();
+  initAutoUpdateUI();
 
-  // Handle enter key on search input
   document.getElementById('search-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      fetchProducts();
-    }
+    if (e.key === 'Enter') fetchProducts();
   });
 });
+
 
 // ═══════════════════════════════════════════════════════════
 //  TAB NAVIGATION
@@ -85,13 +94,19 @@ async function fetchProducts() {
 
     scrapedProducts = data.products || [];
 
-    // Show Demo mode warning if backend is running in demo mode
-    if (data.mode === 'demo') {
-      showBanner('mode-banner', 'mode-text', `<strong>Demo Mode Active:</strong> No RapidAPI key is configured in your backend <code>.env</code> file. Showing live scraped results from <strong>eBay</strong> alongside simulated hot products from <strong>Amazon</strong> & <strong>Walmart</strong>.`);
-    } else if (data.mode === 'live-fallback') {
-      showBanner('mode-banner', 'mode-text', `<strong>Subscription Warning:</strong> Your RapidAPI key was rejected (Error 403/429) or returned 0 items. Please verify that your key is subscribed to the <em>Real-Time Amazon Data</em>, <em>Real-Time eBay Data</em>, and <em>Walmart Data</em> plans on RapidAPI. <strong>Showing fallback live search results from eBay and simulated items instead.</strong>`);
+    // Show mode banner based on which API tier was used
+    const sourceStr = (data.sources || []).map(s => `<strong>${s.charAt(0).toUpperCase() + s.slice(1)}</strong>`).join(', ');
+    
+    if (data.mode === 'live-rapidapi') {
+      showBanner('mode-banner', 'mode-text', `🚀 <strong>Live RapidAPI Mode:</strong> Fetched ${data.total} real-time products from ${sourceStr}. Data is live and updated.`);
+    } else if (data.mode === 'auto-free-api') {
+      showBanner('mode-banner', 'mode-text', `✅ <strong>Auto-API Mode:</strong> Loaded ${data.total} products from free public APIs (${sourceStr}). No key required — always works! Add a RapidAPI key to <code>.env</code> for live Amazon/Walmart data.`);
+    } else if (data.mode === 'scraped') {
+      showBanner('mode-banner', 'mode-text', `🔍 <strong>Live Scraper Mode:</strong> Fetched ${data.total} real products from eBay live search + curated database.`);
+    } else if (data.mode === 'partial') {
+      showBanner('mode-banner', 'mode-text', `⚡ <strong>Hybrid Mode:</strong> ${data.total} products from live APIs + curated database (${sourceStr}). Configure your RapidAPI key for full live data.`);
     } else {
-      showBanner('mode-banner', 'mode-text', `<strong>Live Mode Connected:</strong> Successfully fetched real-time trending products from live e-commerce databases.`);
+      showBanner('mode-banner', 'mode-text', `📦 <strong>Curated Mode:</strong> Showing ${data.total} curated trending products from ${sourceStr}. All products include real prices and images.`);
     }
 
     // Sort and render products
@@ -111,7 +126,7 @@ async function fetchProducts() {
 // ═══════════════════════════════════════════════════════════
 //  APPLY FILTERING AND SORTING
 // ═══════════════════════════════════════════════════════════
-function applyFilters() {
+function applyFilters(prevIds = null) {
   const sortBy = document.getElementById('sort-select').value;
   let products = [...scrapedProducts];
 
@@ -139,7 +154,7 @@ function applyFilters() {
     }
   });
 
-  renderProductsGrid(products, 'products-grid', false);
+  renderProductsGrid(products, 'products-grid', false, prevIds);
   
   if (scrapedProducts.length > 0) {
     document.getElementById('products-section').style.display = 'block';
@@ -159,7 +174,7 @@ function applyFilters() {
 // ═══════════════════════════════════════════════════════════
 //  RENDER PRODUCTS GRID
 // ═══════════════════════════════════════════════════════════
-function renderProductsGrid(products, gridId, isSavedGrid) {
+function renderProductsGrid(products, gridId, isSavedGrid, prevIds = null) {
   const grid = document.getElementById(gridId);
   grid.innerHTML = '';
 
@@ -228,6 +243,10 @@ function renderProductsGrid(products, gridId, isSavedGrid) {
         </div>
       </div>
     `;
+    // Flash new cards during auto-update
+    if (prevIds && !prevIds.has(p.id)) {
+      card.classList.add('is-new');
+    }
     grid.appendChild(card);
   });
 }
@@ -456,7 +475,10 @@ function showToast(message, type = 'success') {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   
-  if (type === 'error') {
+  if (type === 'info') {
+    toast.style.background = '#6366f1';
+    toast.style.boxShadow = '0 10px 25px rgba(99, 102, 241, 0.3)';
+  } else if (type === 'error') {
     toast.style.background = '#ef4444';
     toast.style.boxShadow = '0 10px 25px rgba(239, 68, 68, 0.3)';
   } else {
@@ -669,4 +691,271 @@ function toggleSourceFilter(source) {
 
   // Apply filters and refresh grid
   applyFilters();
+}
+
+// -----------------------------------------------------------
+//  AUTO-UPDATE ENGINE
+// -----------------------------------------------------------
+
+function initAutoUpdateUI() {
+  // Set select to saved value if any
+  const saved = localStorage.getItem('au_interval');
+  if (saved) {
+    autoIntervalSec = parseInt(saved);
+    const sel = document.getElementById('auto-interval-select');
+    if (sel) sel.value = String(autoIntervalSec);
+  }
+  updateTickerUI();
+}
+
+// -- TOGGLE AUTO-UPDATE ON / OFF --
+function toggleAutoUpdate() {
+  if (!autoUpdateActive) {
+    startAutoUpdate();
+  } else if (!autoUpdatePaused) {
+    pauseAutoUpdate();
+  } else {
+    resumeAutoUpdate();
+  }
+}
+
+function startAutoUpdate() {
+  autoUpdateActive = true;
+  autoUpdatePaused = false;
+  autoCountdownSec = autoIntervalSec;
+  autoRefreshCount = 0;
+  autoTotalFetched = 0;
+
+  // Immediately fetch products on start
+  triggerAutoFetch();
+  // Start countdown ticker
+  startCountdownTick();
+
+  updateTickerUI();
+  showToast('Auto-Update Started! Refreshing every ' + formatTime(autoIntervalSec), 'success');
+}
+
+function pauseAutoUpdate() {
+  autoUpdatePaused = true;
+  if (autoCountdownTimer) clearInterval(autoCountdownTimer);
+  updateTickerUI();
+  showToast('Auto-Update Paused', 'info');
+}
+
+function resumeAutoUpdate() {
+  autoUpdatePaused = false;
+  startCountdownTick();
+  updateTickerUI();
+  showToast('Auto-Update Resumed!');
+}
+
+function stopAutoUpdate() {
+  autoUpdateActive = false;
+  autoUpdatePaused = false;
+  if (autoCountdownTimer) clearInterval(autoCountdownTimer);
+  autoCountdownTimer = null;
+  autoCountdownSec = autoIntervalSec;
+  updateTickerUI();
+}
+
+// -- COUNTDOWN TICK EVERY SECOND --
+function startCountdownTick() {
+  if (autoCountdownTimer) clearInterval(autoCountdownTimer);
+  autoCountdownTimer = setInterval(() => {
+    if (autoUpdatePaused) return;
+    autoCountdownSec--;
+    updateCountdownDisplay();
+    if (autoCountdownSec <= 0) {
+      // Time to refresh!
+      autoCountdownSec = autoIntervalSec;
+      updateCountdownDisplay();
+      triggerAutoFetch();
+    }
+  }, 1000);
+}
+
+// -- TRIGGER AUTO FETCH --
+async function triggerAutoFetch() {
+  if (activeTab !== 'explorer') return; // Only auto-refresh on explorer tab
+
+  // Auto-cycle category if enabled
+  if (autoCycleEnabled) {
+    const nextCat = AUTO_CATEGORIES[autoCycleIndex % AUTO_CATEGORIES.length];
+    document.getElementById('category-select').value = nextCat;
+    autoCycleIndex++;
+    document.getElementById('au-current-cat').textContent = nextCat;
+    document.getElementById('ticker-cycle-info').textContent = 
+      nextCat.charAt(0).toUpperCase() + nextCat.slice(1) + ' (' + (autoCycleIndex % AUTO_CATEGORIES.length + 1) + '/' + AUTO_CATEGORIES.length + ')';
+  } else {
+    const currentCat = document.getElementById('category-select').value;
+    document.getElementById('au-current-cat').textContent = currentCat;
+  }
+
+  autoRefreshCount++;
+  document.getElementById('au-refresh-count').textContent = autoRefreshCount;
+  document.getElementById('au-last-time').textContent = new Date().toLocaleTimeString();
+
+  // Animate grid refresh
+  const grid = document.getElementById('products-grid');
+  if (grid) {
+    grid.classList.add('refreshing');
+    setTimeout(() => grid.classList.remove('refreshing'), 800);
+  }
+
+  // Fetch new products silently (without UI loading block)
+  await fetchProductsSilent();
+}
+
+// -- SILENT FETCH (no loading spinner, no page disruption) --
+async function fetchProductsSilent() {
+  const keyword = document.getElementById('search-input').value.trim();
+  const market = document.getElementById('market-select').value;
+  const category = document.getElementById('category-select').value;
+
+  try {
+    const url = '/api/fetch-products?keyword=' + encodeURIComponent(keyword) + '&market=' + market + '&category=' + category + '&limit=30';
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.success || !data.products?.length) return;
+
+    // Mark new products that weren't in the previous list
+    const prevIds = new Set(scrapedProducts.map(p => p.id));
+    scrapedProducts = data.products;
+    autoTotalFetched += data.products.length;
+    document.getElementById('au-total-fetched').textContent = autoTotalFetched;
+
+    applyFilters(prevIds); // pass old IDs to flag new items
+    calculateStats(scrapedProducts);
+
+    // Update banner with auto mode
+    const srcStr = (data.sources || []).map(s => '<strong>' + s.charAt(0).toUpperCase() + s.slice(1) + '</strong>').join(', ');
+    showBanner('mode-banner', 'mode-text', 
+      '\uD83D\uDD04 <strong>Auto-Updated #' + autoRefreshCount + ':</strong> ' + data.total + ' products loaded from ' + srcStr + 
+      ' &nbsp;|&nbsp; \uD83D\uDD50 ' + new Date().toLocaleTimeString());
+
+    showToast('\uD83D\uDD04 Auto-refreshed! ' + data.total + ' products');
+  } catch (e) {
+    console.warn('[Auto-Update] Silent fetch failed:', e.message);
+  }
+}
+
+// -- COUNTDOWN DISPLAY --
+function updateCountdownDisplay() {
+  const el = document.getElementById('ticker-countdown');
+  const bar = document.getElementById('ticker-progress-bar');
+  if (!el) return;
+
+  el.textContent = formatTime(autoCountdownSec);
+
+  // Flash orange when under 10 seconds
+  if (autoCountdownSec <= 10) {
+    el.classList.add('urgent');
+  } else {
+    el.classList.remove('urgent');
+  }
+
+  // Update progress bar (fills as countdown approaches 0)
+  if (bar) {
+    const pct = (autoCountdownSec / autoIntervalSec) * 100;
+    bar.style.width = pct + '%';
+  }
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+// -- UPDATE ALL TICKER UI ELEMENTS --
+function updateTickerUI() {
+  const bar = document.getElementById('auto-ticker-bar');
+  const pulseDot = document.getElementById('ticker-pulse-dot');
+  const label = document.getElementById('ticker-status-label');
+  const center = document.getElementById('ticker-center');
+  const toggleBtn = document.getElementById('btn-auto-toggle');
+  const fetchBtn = document.getElementById('fetch-btn');
+  const infoRow = document.getElementById('auto-update-info-row');
+  const liveDot = document.getElementById('live-dot');
+  const catRow = document.getElementById('au-current-cat');
+
+  if (!bar) return;
+
+  if (!autoUpdateActive) {
+    // STOPPED state
+    bar.classList.remove('is-active','is-paused');
+    pulseDot.className = 'ticker-pulse';
+    label.className = 'ticker-label';
+    label.textContent = 'Auto-Update: OFF';
+    center.className = 'ticker-center';
+    toggleBtn.textContent = '\u25B6 Start Auto';
+    toggleBtn.className = 'ticker-toggle-btn stopped';
+    fetchBtn.classList.remove('auto-active');
+    if (infoRow) infoRow.style.display = 'none';
+    if (liveDot) liveDot.classList.remove('active');
+    document.getElementById('ticker-countdown').textContent = '--:--';
+    document.getElementById('ticker-countdown').classList.remove('urgent');
+    document.getElementById('ticker-progress-bar').style.width = '100%';
+  } else if (autoUpdatePaused) {
+    // PAUSED state
+    bar.classList.remove('is-active');
+    bar.classList.add('is-paused');
+    pulseDot.className = 'ticker-pulse paused';
+    label.className = 'ticker-label paused';
+    label.textContent = 'Auto-Update: PAUSED';
+    center.className = 'ticker-center paused';
+    toggleBtn.textContent = '\u25B6 Resume';
+    toggleBtn.className = 'ticker-toggle-btn paused';
+    fetchBtn.classList.remove('auto-active');
+    if (liveDot) liveDot.classList.remove('active');
+  } else {
+    // ACTIVE state
+    bar.classList.add('is-active');
+    bar.classList.remove('is-paused');
+    pulseDot.className = 'ticker-pulse active';
+    label.className = 'ticker-label active';
+    label.textContent = 'Auto-Update: LIVE';
+    center.className = 'ticker-center active';
+    toggleBtn.textContent = '\u23F8 Pause';
+    toggleBtn.className = 'ticker-toggle-btn';
+    fetchBtn.classList.add('auto-active');
+    if (infoRow) infoRow.style.display = 'flex';
+    if (liveDot) liveDot.classList.add('active');
+    if (catRow) catRow.textContent = document.getElementById('category-select').value;
+  }
+}
+
+// -- CHANGE INTERVAL --
+function changeAutoInterval() {
+  const sel = document.getElementById('auto-interval-select');
+  autoIntervalSec = parseInt(sel.value);
+  autoCountdownSec = autoIntervalSec;
+  localStorage.setItem('au_interval', autoIntervalSec);
+
+  if (autoUpdateActive && !autoUpdatePaused) {
+    startCountdownTick(); // restart timer
+  }
+
+  updateCountdownDisplay();
+  showToast('Refresh interval set to ' + formatTime(autoIntervalSec));
+}
+
+// -- TOGGLE CATEGORY CYCLING --
+function toggleCycleCategories() {
+  autoCycleEnabled = !autoCycleEnabled;
+  const btn = document.getElementById('btn-cycle-toggle');
+  const info = document.getElementById('ticker-cycle-info');
+
+  if (autoCycleEnabled) {
+    btn.classList.add('active');
+    btn.textContent = '\u2713 Cycling ON';
+    info.textContent = 'All ' + AUTO_CATEGORIES.length + ' categories';
+    showToast('Category cycling ON � will auto-rotate through all categories!');
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '\uD83D\uDD04 Cycle Categories';
+    info.textContent = '';
+    showToast('Category cycling OFF');
+  }
 }
